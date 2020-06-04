@@ -70,13 +70,31 @@ struct Game {
 
     enum class Piece { None, Yellow, Red };
     Piece grid[SIZE_X][SIZE_Y][SIZE_Z] = {};
+    Piece* current_column = grid[0][0];
 
     enum class Player { Yellow, Red };
     Player current_player = Player::Yellow;
 
-    static Piece player_to_piece(Player p) {
-        return p == Player::Yellow ? Piece::Yellow : Piece::Red;
+    static Player next_player(Player p) {
+        switch (p) {
+            case Player::Yellow:
+                return Player::Red;
+            case Player::Red:
+                return Player::Yellow;
+        }
     }
+
+    static Piece player_to_piece(Player p) {
+        switch (p) {
+            case Player::Yellow:
+                return Piece::Yellow;
+            case Player::Red:
+                return Piece::Red;
+        }
+    }
+
+    unsigned int time = 0;
+    const unsigned int drop_time = 500;
 
     static CRGB piece_to_crgb(Piece p) {
         switch (p) {
@@ -86,8 +104,59 @@ struct Game {
                 return CRGB::Yellow;
             case Piece::Red:
                 return CRGB::Red;
+        }
+    }
+
+    bool is_full() {
+        for (size_t i = 0; i < SIZE_X; i++) {
+            for (size_t j = 0; j < SIZE_Y; j++) {
+                for (size_t k = 0; k < SIZE_Z; k++) {
+                    if (grid[i][j][k] == Piece::None) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    void update(unsigned int dt) {
+        switch (state) {
+            case State::Ready:
+                if (input.state == Input::State::Pressed) {
+                    current_column = grid[input.x][input.y];
+                    Piece& top_piece = current_column[SIZE_Z - 1];
+                    if (top_piece == Piece::None) {
+                        top_piece = player_to_piece(current_player);
+                        state = State::Dropping;
+                    }
+                }
+                break;
+            case State::Dropping:
+                time += dt;
+                if (time < drop_time) {
+                    return;
+                }
+                time = 0;
+                for (size_t i = 1; i < SIZE_Z; i++) {
+                    if (current_column[i] != Piece::None &&
+                        current_column[i - 1] == Piece::None) {
+                        current_column[i - 1] = current_column[i];
+                        current_column[i] = Piece::None;
+                    }
+                }
+                for (size_t i = 1; i < SIZE_Z; i++) {
+                    if (current_column[i] != Piece::None &&
+                        current_column[i - 1] == Piece::None) {
+                        return;
+                    }
+                }
+                if (input.state == Input::State::Ready) {
+                    state = State::Ready;
+                }
+
             default:
-                return CRGB::Black;
+                break;
         }
     }
 };
