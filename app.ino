@@ -6,13 +6,111 @@
 
 #define CHIPSET WS2812B
 
-#define add_led_column(x, y, pin) \
-    FastLED.addLeds<CHIPSET, pin>(leds[x][y], SIZE_Z);
+#define add_led_column(x, y, input_pin, led_pin)           \
+    FastLED.addLeds<CHIPSET, led_pin>(leds[x][y], SIZE_Z); \
+    pinMode(input_pin, INPUT_PULLUP);                      \
+    input_pins[x][y] = input_pin;
 
 CRGB leds[SIZE_X][SIZE_Y][SIZE_Z];
 
+uint8_t input_pins[SIZE_X][SIZE_Y];
+
+struct Input {
+    enum class State { Ready, Debouncing, Pressed };
+    State state = State::Ready;
+
+    uint8_t x, y;
+
+    const unsigned int debounce_time = 10;
+    unsigned int time = 0;
+
+    void update(unsigned int dt) {
+        switch (state) {
+            case State::Ready:
+                for (size_t i = 0; i < SIZE_X; i++) {
+                    for (size_t j = 0; j < SIZE_Y; j++) {
+                        if (digitalRead(input_pins[i][j]) == LOW) {
+                            x = i;
+                            y = j;
+                            state = State::Debouncing;
+                            return;
+                        }
+                    }
+                }
+                break;
+            case State::Debouncing:
+                if (digitalRead(input_pins[x][y] == LOW)) {
+                    time += dt;
+                    if (time >= debounce_time) {
+                        time = 0;
+                        state = State::Pressed;
+                    }
+                } else {
+                    time = 0;
+                    state = State::Ready;
+                }
+                break;
+            case State::Pressed:
+                if (digitalRead(input_pins[x][y] == HIGH)) {
+                    state = State::Ready;
+                }
+                break;
+
+            default:
+                break;
+        }
+    }
+};
+
+Input input;
+
+struct Game {
+    enum class State { Ready, Dropping, Done };
+    State state = State::Ready;
+
+    enum class Piece { None, Yellow, Red };
+    Piece grid[SIZE_X][SIZE_Y][SIZE_Z] = {};
+
+    enum class Player { Yellow, Red };
+    Player current_player = Player::Yellow;
+
+    static Piece player_to_piece(Player p) {
+        return p == Player::Yellow ? Piece::Yellow : Piece::Red;
+    }
+
+    static CRGB piece_to_crgb(Piece p) {
+        switch (p) {
+            case Piece::None:
+                return CRGB::Black;
+            case Piece::Yellow:
+                return CRGB::Yellow;
+            case Piece::Red:
+                return CRGB::Red;
+            default:
+                return CRGB::Black;
+        }
+    }
+};
+
+Game game;
+
 void setup() {
-    add_led_column(0, 0, 0);
+    add_led_column(0, 0, 22, 23);
+    add_led_column(0, 1, 24, 25);
+    add_led_column(0, 2, 26, 27);
+    add_led_column(0, 3, 28, 29);
+    add_led_column(1, 0, 30, 31);
+    add_led_column(1, 1, 32, 33);
+    add_led_column(1, 2, 34, 35);
+    add_led_column(1, 3, 36, 37);
+    add_led_column(2, 0, 38, 39);
+    add_led_column(2, 1, 40, 41);
+    add_led_column(2, 2, 42, 43);
+    add_led_column(2, 3, 44, 45);
+    add_led_column(3, 0, 46, 47);
+    add_led_column(3, 1, 48, 49);
+    add_led_column(3, 2, 50, 51);
+    add_led_column(3, 3, 52, 53);
 }
 
 void loop() {}
