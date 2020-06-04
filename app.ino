@@ -204,14 +204,26 @@ struct Game {
                     }
                     current_player = next_player(current_player);
                 }
-
+                break;
             default:
                 break;
         }
     }
+    void show() {
+        for (size_t i = 0; i < SIZE_X; i++) {
+            for (size_t j = 0; j < SIZE_Y; j++) {
+                for (size_t k = 0; k < SIZE_Z; k++) {
+                    leds[i][j][k] = piece_to_crgb(grid[i][j][k]);
+                }
+            }
+        }
+        FastLED.show();
+    }
 };
 
 Game game;
+
+unsigned long last_update;
 
 void setup() {
     add_led_column(0, 0, 22, 23);
@@ -230,6 +242,14 @@ void setup() {
     add_led_column(3, 1, 48, 49);
     add_led_column(3, 2, 50, 51);
     add_led_column(3, 3, 52, 53);
+    last_update = millis();
 }
 
-void loop() {}
+void loop() {
+    const unsigned long time = millis();
+    const unsigned int dt = time - last_update;
+    input.update(dt);
+    game.update(dt);
+    game.show();
+    last_update = time;
+}
