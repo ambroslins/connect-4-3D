@@ -65,7 +65,7 @@ struct Input {
 Input input;
 
 struct Game {
-    enum class State { Ready, Dropping, Done };
+    enum class State { Ready, Dropping, Draw, Winner };
     State state = State::Ready;
 
     enum class Piece { None, Yellow, Red };
@@ -107,7 +107,7 @@ struct Game {
         }
     }
 
-    bool is_full() {
+    bool full() {
         for (size_t i = 0; i < SIZE_X; i++) {
             for (size_t j = 0; j < SIZE_Y; j++) {
                 for (size_t k = 0; k < SIZE_Z; k++) {
@@ -118,6 +118,36 @@ struct Game {
             }
         }
         return true;
+    }
+
+    bool won() {
+        Piece current = player_to_piece(current_player);
+        for (size_t i = 0; i < 4; i++) {
+            for (size_t j = 0; j < 4; j++) {
+                if (grid[i][j][0] == current && grid[i][j][1] == current &&
+                        grid[i][j][2] == current && grid[i][j][3] == current ||
+                    grid[i][0][j] == current && grid[i][1][j] == current &&
+                        grid[i][2][j] == current && grid[i][3][j] == current ||
+                    grid[0][i][j] == current && grid[1][i][j] == current &&
+                        grid[2][i][j] == current && grid[3][i][j] == current
+
+                ) {
+                    return true;
+                }
+            }
+        }
+        if (grid[0][0][0] == current && grid[1][1][1] == current &&
+                grid[2][2][2] == current && grid[3][3][3] == current ||
+            grid[0][0][3] == current && grid[1][1][2] == current &&
+                grid[2][2][1] == current && grid[3][3][0] == current ||
+            grid[0][3][0] == current && grid[1][2][1] == current &&
+                grid[2][1][2] == current && grid[3][0][3] == current ||
+            grid[3][0][0] == current && grid[2][1][1] == current &&
+                grid[1][2][2] == current && grid[0][3][3] == current) {
+            return true;
+        }
+
+        return false;
     }
 
     void update(unsigned int dt) {
@@ -152,7 +182,27 @@ struct Game {
                     }
                 }
                 if (input.state == Input::State::Ready) {
-                    state = State::Ready;
+                    if (won()) {
+                        state = State::Winner;
+                    } else if (full()) {
+                        state = State::Draw;
+                    } else {
+                        current_player = next_player(current_player);
+                        state = State::Ready;
+                    }
+                }
+                break;
+            case State::Draw:
+            case State::Winner:
+                if (input.state == Input::State::Pressed) {
+                    for (size_t i = 0; i < SIZE_X; i++) {
+                        for (size_t j = 0; j < SIZE_Y; j++) {
+                            for (size_t k = 0; k < SIZE_Z; k++) {
+                                grid[i][j][k] = Piece::None;
+                            }
+                        }
+                    }
+                    current_player = next_player(current_player);
                 }
 
             default:
