@@ -203,6 +203,7 @@ struct Game {
                         }
                     }
                     current_player = next_player(current_player);
+                    state = State::Ready;
                 }
                 break;
             default:
