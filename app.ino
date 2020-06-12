@@ -65,7 +65,7 @@ struct Input {
 Input input;
 
 struct Game {
-    enum class State { Ready, Dropping, Draw, Winner };
+    enum class State { Ready, Dropping, Draw, Winner, Reset };
     State state = State::Ready;
 
     enum class Piece { None, Yellow, Red };
@@ -203,6 +203,11 @@ struct Game {
                         }
                     }
                     current_player = next_player(current_player);
+                    state = State::Reset;
+                }
+                break;
+            case State::Reset:
+                if (input.state == Input::State::Ready) {
                     state = State::Ready;
                 }
                 break;
