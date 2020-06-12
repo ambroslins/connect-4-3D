@@ -224,12 +224,14 @@ struct Game {
                     CRGB& led = leds[i][j][k];
                     const CRGB new_rgb = piece_to_crgb(grid[i][j][k]);
                     const CRGB old_rgb = led;
-                    const int dr = new_rgb.r - old_rgb.r;
-                    const int dg = new_rgb.g - old_rgb.g;
-                    const int db = new_rgb.b - old_rgb.b;
-                    led.r += constrain(dr, -d, d);
-                    led.g += constrain(dg, -d, d);
-                    led.b += constrain(db, -d, d);
+                    if (old_rgb != new_rgb) {
+                        const int dr = new_rgb.r - old_rgb.r;
+                        const int dg = new_rgb.g - old_rgb.g;
+                        const int db = new_rgb.b - old_rgb.b;
+                        led.r += constrain(dr, -d, d);
+                        led.g += constrain(dg, -d, d);
+                        led.b += constrain(db, -d, d);
+                    }
                 }
             }
         }
