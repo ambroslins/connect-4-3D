@@ -215,11 +215,21 @@ struct Game {
                 break;
         }
     }
-    void show() {
+    void show(unsigned int dt) {
+        const uint8_t d = min(dt, 255);
+
         for (size_t i = 0; i < SIZE_X; i++) {
             for (size_t j = 0; j < SIZE_Y; j++) {
                 for (size_t k = 0; k < SIZE_Z; k++) {
-                    leds[i][j][k] = piece_to_crgb(grid[i][j][k]);
+                    CRGB& led = leds[i][j][k];
+                    const CRGB new_rgb = piece_to_crgb(grid[i][j][k]);
+                    const CRGB old_rgb = led;
+                    const int dr = new_rgb.r - old_rgb.r;
+                    const int dg = new_rgb.g - old_rgb.g;
+                    const int db = new_rgb.b - old_rgb.b;
+                    led.r += constrain(dr, -d, d);
+                    led.g += constrain(dg, -d, d);
+                    led.b += constrain(db, -d, d);
                 }
             }
         }
@@ -256,6 +266,6 @@ void loop() {
     const unsigned int dt = time - last_update;
     input.update(dt);
     game.update(dt);
-    game.show();
+    game.show(dt);
     last_update = time;
 }
