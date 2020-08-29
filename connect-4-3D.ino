@@ -21,7 +21,7 @@ struct Input {
 
     uint8_t x, y;
 
-    const unsigned int debounce_time = 10;
+    const unsigned int debounce_time = 50;
     unsigned int time = 0;
 
     void update(unsigned int dt) {
@@ -32,6 +32,7 @@ struct Input {
                         if (digitalRead(input_pins[i][j]) == LOW) {
                             x = i;
                             y = j;
+                            time = 0;
                             state = State::Debouncing;
                             return;
                         }
@@ -39,7 +40,7 @@ struct Input {
                 }
                 break;
             case State::Debouncing:
-                if (digitalRead(input_pins[x][y] == LOW)) {
+                if (digitalRead(input_pins[x][y]) == LOW) {
                     time += dt;
                     if (time >= debounce_time) {
                         time = 0;
@@ -51,8 +52,14 @@ struct Input {
                 }
                 break;
             case State::Pressed:
-                if (digitalRead(input_pins[x][y] == HIGH)) {
-                    state = State::Ready;
+                if (digitalRead(input_pins[x][y]) == HIGH) {
+                    if (time >= debounce_time) {
+                        state = State::Ready;
+                    } else {
+                        time += dt;
+                    }
+                } else {
+                    time = 0;
                 }
                 break;
 
