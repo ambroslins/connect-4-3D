@@ -6,9 +6,9 @@
 
 #define CHIPSET WS2812B
 
-#define add_led_column(x, y, input_pin, led_pin)           \
+#define add_led_column(x, y, input_pin, led_pin)                \
     FastLED.addLeds<CHIPSET, led_pin>(leds[x][y], SIZE_Z); \
-    pinMode(input_pin, INPUT_PULLUP);                      \
+    pinMode(input_pin, INPUT_PULLUP);                           \
     input_pins[x][y] = input_pin;
 
 CRGB leds[SIZE_X][SIZE_Y][SIZE_Z];
