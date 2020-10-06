@@ -12,6 +12,7 @@
   input_pins[x][y] = input_pin;
 
 CRGB leds[SIZE_X][SIZE_Y][SIZE_Z];
+CRGB underfloor[84];
 
 uint8_t input_pins[SIZE_X][SIZE_Y];
 
@@ -79,6 +80,8 @@ struct Game {
   Piece grid[SIZE_X][SIZE_Y][SIZE_Z] = {};
   Piece* current_column = grid[0][0];
 
+  size_t winning_positions[3][4] = {};
+
   enum class Player { Yellow, Red };
   Player current_player = Player::Yellow;
 
@@ -128,33 +131,42 @@ struct Game {
   }
 
   bool won() {
-    Piece current = player_to_piece(current_player);
+    const Piece current = player_to_piece(current_player);
+    const auto check = [this, current](size_t x, size_t y, size_t z) {
+      const auto p = [this, current, x, y, z](int i, int j, int k) {
+        for (size_t n = 0; n < 4; n++) {
+          const int tx = x + i * n;
+          const int ty = y + j * n;
+          const int tz = z + k * n;
+
+          if (tx >= 4 || ty >= 4 || tz >= 4 || tz < 0 ||
+              grid[tx][ty][tz] != current) {
+            return false;
+          } else {
+            winning_positions[n][0] = tx;
+            winning_positions[n][1] = ty;
+            winning_positions[n][2] = tz;
+          }
+        }
+        return true;
+      };
+      for (size_t i = 0; i <= 1; i++) {
+        for (size_t j = 0; j <= 1; j++) {
+          for (int k = -1; k <= 1; k++) {
+            if (p(i, j, k)) {
+              return true;
+            }
+          }
+        }
+      }
+    };
     for (size_t i = 0; i < 4; i++) {
       for (size_t j = 0; j < 4; j++) {
-        if (grid[i][j][0] == current && grid[i][j][1] == current &&
-                grid[i][j][2] == current && grid[i][j][3] == current ||
-            grid[i][0][j] == current && grid[i][1][j] == current &&
-                grid[i][2][j] == current && grid[i][3][j] == current ||
-            grid[0][i][j] == current && grid[1][i][j] == current &&
-                grid[2][i][j] == current && grid[3][i][j] == current
-
-        ) {
+        if (check(i, j, 0) || check(i, 0, j) || check(0, i, j)) {
           return true;
         }
       }
     }
-    if (grid[0][0][0] == current && grid[1][1][1] == current &&
-            grid[2][2][2] == current && grid[3][3][3] == current ||
-        grid[0][0][3] == current && grid[1][1][2] == current &&
-            grid[2][2][1] == current && grid[3][3][0] == current ||
-        grid[0][3][0] == current && grid[1][2][1] == current &&
-            grid[2][1][2] == current && grid[3][0][3] == current ||
-        grid[3][0][0] == current && grid[2][1][1] == current &&
-            grid[1][2][2] == current && grid[0][3][3] == current) {
-      return true;
-    }
-
-    return false;
   }
 
   void update(unsigned int dt) {
@@ -224,6 +236,7 @@ struct Game {
   }
   void show(unsigned int dt) {
     const uint8_t d = min(dt, 255);
+    const bool blink = (state == State::Winner) && (millis() / 500) | 1;
 
     for (size_t i = 0; i < SIZE_X; i++) {
       for (size_t j = 0; j < SIZE_Y; j++) {
@@ -242,6 +255,16 @@ struct Game {
         }
       }
     }
+    for (auto& l : underfloor) {
+      l = blink ? CRGB::Black : piece_to_crgb(player_to_piece(current_player));
+    }
+
+    if (blink) {
+      for (auto p : winning_positions) {
+        leds[p[0]][p[1]][p[2]] = CRGB::Black;
+      }
+    }
+
     FastLED.show();
   }
 };
@@ -251,6 +274,7 @@ Game game;
 unsigned long last_update;
 
 void setup() {
+  FastLED.addLeds<CHIPSET, 6, GRB>(underfloor, 84);
   add_led_column(0, 0, 22, 23);
   add_led_column(0, 1, 24, 25);
   add_led_column(0, 2, 26, 27);
