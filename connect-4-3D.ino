@@ -63,9 +63,6 @@ struct Input {
           time = 0;
         }
         break;
-
-      default:
-        break;
     }
   }
 };
@@ -78,7 +75,8 @@ struct Game {
 
   enum class Piece { None, Yellow, Red };
   Piece grid[SIZE_X][SIZE_Y][SIZE_Z] = {};
-  Piece* current_column = grid[0][0];
+  size_t current_x = 0;
+  size_t current_y = 0;
 
   size_t winning_positions[3][4] = {};
 
@@ -130,84 +128,86 @@ struct Game {
     return true;
   }
 
-  bool won() {
+  bool won(size_t x, size_t y, size_t z) {
     const Piece current = player_to_piece(current_player);
-    const auto check = [this, current](size_t x, size_t y, size_t z) {
-      const auto p = [this, current, x, y, z](int i, int j, int k) {
-        for (size_t n = 0; n < 4; n++) {
-          const int tx = x + i * n;
-          const int ty = y + j * n;
-          const int tz = z + k * n;
-
-          if (tx >= 4 || ty >= 4 || tz >= 4 || tz < 0 ||
-              grid[tx][ty][tz] != current) {
-            return false;
-          } else {
-            winning_positions[n][0] = tx;
-            winning_positions[n][1] = ty;
-            winning_positions[n][2] = tz;
-          }
-        }
-        return true;
-      };
-      for (size_t i = 0; i <= 1; i++) {
-        for (size_t j = 0; j <= 1; j++) {
-          for (int k = -1; k <= 1; k++) {
-            if (p(i, j, k)) {
-              return true;
-            }
-          }
+    auto check = [&](int i, int j, int k) -> bool {
+      int x_ = x;
+      int y_ = y;
+      int z_ = z;
+      do {
+        x_ -= i;
+        y_ -= j;
+        z_ -= k;
+      } while (x_ >= 0 && x_ < SIZE_X && y_ >= 0 && y_ < SIZE_Y && z_ >= 0 &&
+               z_ < SIZE_Z);
+      for (size_t n = 0; n < 4; n++) {
+        x_ += i;
+        y_ += j;
+        z_ += k;
+        if (!(x_ >= 0 && x_ < SIZE_X && y_ >= 0 && y_ < SIZE_Y && z_ >= 0 &&
+              z_ < SIZE_Z && grid[x_][y_][z_] == current)) {
+          return false;
+        } else {
+          winning_positions[n][0] = x_;
+          winning_positions[n][1] = y_;
+          winning_positions[n][2] = z_;
         }
       }
+      return true;
     };
-    for (size_t i = 0; i < 4; i++) {
-      for (size_t j = 0; j < 4; j++) {
-        if (check(i, j, 0) || check(i, 0, j) || check(0, i, j)) {
-          return true;
+    for (int i = 0; i <= 1; i++) {
+      for (int j = -i; j <= 1; j++) {
+        for (int k = -1; k <= 1; k++) {
+          if (check(i, j, k)) {
+            return true;
+          }
         }
       }
     }
+    return false;
   }
+
+  Piece* current_column() { return grid[current_x][current_y]; }
 
   void update(unsigned int dt) {
     switch (state) {
-      case State::Ready:
+      case State::Ready: {
         if (input.state == Input::State::Pressed) {
-          current_column = grid[input.x][input.y];
-          Piece& top_piece = current_column[SIZE_Z - 1];
+          current_x = input.x;
+          current_y = input.y;
+          Piece& top_piece = current_column()[SIZE_Z - 1];
           if (top_piece == Piece::None) {
             top_piece = player_to_piece(current_player);
             state = State::Dropping;
           }
         }
-        break;
+      } break;
       case State::Dropping:
         time += dt;
         if (time < drop_time) {
           return;
         }
         time = 0;
-        for (size_t i = 1; i < SIZE_Z; i++) {
-          if (current_column[i] != Piece::None &&
-              current_column[i - 1] == Piece::None) {
-            current_column[i - 1] = current_column[i];
-            current_column[i] = Piece::None;
+        {
+          int z = SIZE_Z - 1;
+          for (; z >= 0; z--) {
+            if (current_column()[z] != Piece::None) {
+              break;
+            }
           }
-        }
-        for (size_t i = 1; i < SIZE_Z; i++) {
-          if (current_column[i] != Piece::None &&
-              current_column[i - 1] == Piece::None) {
+          if (z > 0 && current_column()[z - 1] == Piece::None ||
+              current_column()[z] == Piece::None) {
             return;
           }
-        }
-        if (input.state == Input::State::Ready) {
-          if (won()) {
-            state = State::Winner;
-          } else if (full()) {
-            state = State::Draw;
-          } else {
-            current_player = next_player(current_player);
-            state = State::Ready;
+          if (input.state == Input::State::Ready) {
+            if (won(current_x, current_y, z)) {
+              state = State::Winner;
+            } else if (full()) {
+              state = State::Draw;
+            } else {
+              current_player = next_player(current_player);
+              state = State::Ready;
+            }
           }
         }
         break;
@@ -229,8 +229,6 @@ struct Game {
         if (input.state == Input::State::Ready) {
           state = State::Ready;
         }
-        break;
-      default:
         break;
     }
   }
