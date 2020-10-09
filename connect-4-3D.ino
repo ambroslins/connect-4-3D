@@ -296,7 +296,7 @@ struct Game {
     }
     for (auto& l : underfloor) {
       l = blink ? CRGB::Black
-                : piece_to_crgb(player_to_piece(current_player)) %= 64;
+                : piece_to_crgb(player_to_piece(current_player)) %= 170;
     }
 
     if (blink) {
