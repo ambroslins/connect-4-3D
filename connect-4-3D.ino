@@ -110,7 +110,7 @@ struct Game {
   size_t current_x = 0;
   size_t current_y = 0;
 
-  size_t winning_positions[4][3] = {};
+  Vec3<int> winning_positions[4] = {};
 
   enum class Player { Yellow, Red };
   Player current_player = Player::Yellow;
@@ -183,9 +183,7 @@ struct Game {
         if (!(is_inside(p) && grid[p.x][p.y][p.z] == current)) {
           return false;
         } else {
-          winning_positions[n][0] = p.x;
-          winning_positions[n][1] = p.y;
-          winning_positions[n][2] = p.z;
+          winning_positions[n] = p;
         }
       }
       return true;
@@ -295,13 +293,12 @@ struct Game {
       }
     }
     for (auto& l : underfloor) {
-      l = blink ? CRGB::Black
-                : piece_to_crgb(player_to_piece(current_player)) %= 170;
+      l = blink ? CRGB::Black : piece_to_crgb(player_to_piece(current_player));
     }
 
     if (blink) {
-      for (auto p : winning_positions) {
-        leds[p[0]][p[1]][p[2]] = CRGB::Black;
+      for (auto& p : winning_positions) {
+        leds[p.x][p.y][p.z] = CRGB::Black;
       }
     }
 
