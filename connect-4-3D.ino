@@ -1,5 +1,15 @@
 #include "FastLED.h"
 
+#define DEBUG
+
+#ifdef DEBUG
+#define log(x) Serial.print(x);
+#define logln(x) Serial.print(x);
+#else
+#define log(x)
+#define logln(x)
+#endif
+
 #define SIZE_X 4
 #define SIZE_Y 4
 #define SIZE_Z 4
@@ -179,6 +189,7 @@ struct Game {
           if (top_piece == Piece::None) {
             top_piece = player_to_piece(current_player);
             state = State::Dropping;
+            logln("Ready -> Dropping");
           }
         }
       } break;
@@ -190,23 +201,25 @@ struct Game {
         time = 0;
         {
           int z = SIZE_Z - 1;
-          for (; z >= 0; z--) {
-            if (current_column()[z] != Piece::None) {
-              break;
-            }
+          while (z >= 0 && current_column()[z] == Piece::None) {
+            z--;
           }
-          if (z > 0 && current_column()[z - 1] == Piece::None ||
-              current_column()[z] == Piece::None) {
+          if (z > 0 && current_column()[z - 1] == Piece::None) {
+            current_column()[z - 1] = current_column()[z];
+            current_column()[z] = Piece::None;
             return;
           }
           if (input.state == Input::State::Ready) {
             if (won(current_x, current_y, z)) {
               state = State::Winner;
+              logln("Dropping -> Winner");
             } else if (full()) {
               state = State::Draw;
+              logln("Dropping -> Draw");
             } else {
               current_player = next_player(current_player);
               state = State::Ready;
+              logln("Dropping -> Ready");
             }
           }
         }
@@ -223,11 +236,13 @@ struct Game {
           }
           current_player = next_player(current_player);
           state = State::Reset;
+          logln("Winner/Draw -> Reset");
         }
         break;
       case State::Reset:
         if (input.state == Input::State::Ready) {
           state = State::Ready;
+          logln("Reset -> Ready");
         }
         break;
     }
@@ -272,6 +287,10 @@ Game game;
 unsigned long last_update;
 
 void setup() {
+#ifdef DEBUG
+  Serial.begin(9600);
+  Serial.println("setup");
+#endif
   FastLED.addLeds<CHIPSET, 6, GRB>(underfloor, 84);
   add_led_column(0, 0, 22, 23);
   add_led_column(0, 1, 24, 25);
