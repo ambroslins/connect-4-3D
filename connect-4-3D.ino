@@ -1,6 +1,6 @@
 #include "FastLED.h"
 
-#define DEBUG
+// #define DEBUG
 
 #ifdef DEBUG
 #define log(x) Serial.print(x);
@@ -110,7 +110,7 @@ struct Game {
   size_t current_x = 0;
   size_t current_y = 0;
 
-  size_t winning_positions[3][4] = {};
+  size_t winning_positions[4][3] = {};
 
   enum class Player { Yellow, Red };
   Player current_player = Player::Yellow;
