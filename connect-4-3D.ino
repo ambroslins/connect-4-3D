@@ -4,7 +4,7 @@
 
 #ifdef DEBUG
 #define log(x) Serial.print(x);
-#define logln(x) Serial.print(x);
+#define logln(x) Serial.println(x);
 #else
 #define log(x)
 #define logln(x)
@@ -25,6 +25,28 @@ CRGB leds[SIZE_X][SIZE_Y][SIZE_Z];
 CRGB underfloor[84];
 
 uint8_t input_pins[SIZE_X][SIZE_Y];
+
+template <class T>
+struct Vec3 {
+  T x, y, z;
+
+  Vec3() : x(0), y(0), z(0) {}
+  Vec3(T x_, T y_, T z_) : x(x_), y(y_), z(z_) {}
+
+  bool operator==(const Vec3<T>& other) const {
+    return x == other.x && y == other.y && z == other.z;
+  }
+
+  bool operator!=(const Vec3<T>& other) const { return !operator==(other); }
+
+  Vec3<T> operator+(const Vec3<T>& other) const {
+    return {x + other.x, y + other.y, z + other.z};
+  }
+
+  Vec3<T> operator-(const Vec3<T>& other) const {
+    return {x - other.x, y - other.y, z - other.z};
+  }
+};
 
 struct Input {
   enum class State { Ready, Debouncing, Pressed };
@@ -138,29 +160,32 @@ struct Game {
     return true;
   }
 
-  bool won(size_t x, size_t y, size_t z) {
+  template <class T>
+  bool is_inside(Vec3<T> vec) {
+    return vec.x >= 0 && vec.x < SIZE_X && vec.y >= 0 && vec.y < SIZE_Y &&
+           vec.z >= 0 && vec.z < SIZE_Z;
+  }
+
+  bool won(Vec3<int> pos) {
+    logln("won(" + String(pos.x) + ", " + String(pos.y) + ", " + String(pos.z) +
+          ")");
     const Piece current = player_to_piece(current_player);
-    auto check = [&](int i, int j, int k) -> bool {
-      int x_ = x;
-      int y_ = y;
-      int z_ = z;
+    auto check = [&](Vec3<int> dir) -> bool {
+      logln("check(" + String(dir.x) + ", " + String(dir.y) + ", " +
+            String(dir.z) + ")");
+      Vec3<int> p = pos;
       do {
-        x_ -= i;
-        y_ -= j;
-        z_ -= k;
-      } while (x_ >= 0 && x_ < SIZE_X && y_ >= 0 && y_ < SIZE_Y && z_ >= 0 &&
-               z_ < SIZE_Z);
+        p = p - dir;
+      } while (is_inside(p));
       for (size_t n = 0; n < 4; n++) {
-        x_ += i;
-        y_ += j;
-        z_ += k;
-        if (!(x_ >= 0 && x_ < SIZE_X && y_ >= 0 && y_ < SIZE_Y && z_ >= 0 &&
-              z_ < SIZE_Z && grid[x_][y_][z_] == current)) {
+        p = p + dir;
+        logln(String(n) + ": " + String(p.x) + String(p.y) + String(p.z));
+        if (!(is_inside(p) && grid[p.x][p.y][p.z] == current)) {
           return false;
         } else {
-          winning_positions[n][0] = x_;
-          winning_positions[n][1] = y_;
-          winning_positions[n][2] = z_;
+          winning_positions[n][0] = p.x;
+          winning_positions[n][1] = p.y;
+          winning_positions[n][2] = p.z;
         }
       }
       return true;
@@ -168,7 +193,8 @@ struct Game {
     for (int i = 0; i <= 1; i++) {
       for (int j = -i; j <= 1; j++) {
         for (int k = -1; k <= 1; k++) {
-          if (check(i, j, k)) {
+          Vec3<int> dir = {i, j, k};
+          if (dir != Vec3<int>() && check(dir)) {
             return true;
           }
         }
@@ -210,7 +236,7 @@ struct Game {
             return;
           }
           if (input.state == Input::State::Ready) {
-            if (won(current_x, current_y, z)) {
+            if (won(Vec3<int>((int)current_x, (int)current_y, z))) {
               state = State::Winner;
               logln("Dropping -> Winner");
             } else if (full()) {
@@ -249,7 +275,7 @@ struct Game {
   }
   void show(unsigned int dt) {
     const uint8_t d = min(dt, 255);
-    const bool blink = (state == State::Winner) && (millis() / 500) | 1;
+    const bool blink = (state == State::Winner) && ((millis() / 500) % 2) == 0;
 
     for (size_t i = 0; i < SIZE_X; i++) {
       for (size_t j = 0; j < SIZE_Y; j++) {
@@ -269,7 +295,8 @@ struct Game {
       }
     }
     for (auto& l : underfloor) {
-      l = blink ? CRGB::Black : piece_to_crgb(player_to_piece(current_player));
+      l = blink ? CRGB::Black
+                : piece_to_crgb(player_to_piece(current_player)) %= 64;
     }
 
     if (blink) {
